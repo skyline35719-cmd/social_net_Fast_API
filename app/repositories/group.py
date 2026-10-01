@@ -1,6 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models import Group
+
 
 class GroupRepository:
     def __init__(self, session: AsyncSession):
@@ -14,3 +16,11 @@ class GroupRepository:
         stmt = select(Group).order_by(Group.title)
         result = await self.session.scalars(stmt)
         return result.all()
+
+    # НОВЫЙ МЕТОД: создание сообщества
+    async def create(self, title: str, slug: str, description: str) -> Group:
+        group = Group(title=title, slug=slug, description=description)
+        self.session.add(group)
+        await self.session.commit()
+        await self.session.refresh(group)
+        return group

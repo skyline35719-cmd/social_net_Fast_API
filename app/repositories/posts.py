@@ -1,15 +1,25 @@
-from sqlalchemy import select, desc, func, delete
-from sqlalchemy.orm import joinedload, selectinload
+from fastapi_pagination import Page, Params
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import delete, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi_pagination import Page
-from app.models import Post, User, Comment, Group
+from sqlalchemy.orm import joinedload, selectinload
+
+from app.models import Comment, Group, Post, User
+
 
 class PostRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
     async def get_feed(self, q: str | None) -> Page:
-        stmt = select(Post).options(joinedload(Post.author).load_only(User.id, User.username)).order_by(desc(Post.pub_date))
+        stmt = (
+            select(Post)
+            .options(
+                joinedload(Post.author),
+                joinedload(Post.group),
+            )
+            .order_by(desc(Post.pub_date))
+        )
         if q:
             stmt = stmt.where(Post.text.ilike(f"%{q}%"))
         return await paginate(self.session, stmt)
@@ -20,21 +30,40 @@ class PostRepository:
             select(Post)
             .join(Follow, Post.author_id == Follow.author_id)
             .where(Follow.user_id == user_id)
-            .options(joinedload(Post.author).load_only(User.id, User.username))
+            .options(
+                joinedload(Post.author),
+                joinedload(Post.group),
+            )
             .order_by(desc(Post.pub_date))
         )
         return await paginate(self.session, stmt)
 
-    async def get_group_posts(self, group_id: int) -> Page:
-        stmt = select(Post).where(Post.group_id == group_id).order_by(desc(Post.pub_date))
-        return await paginate(self.session, stmt)
+    async def get_group_posts(self, group_id: int, params: Params) -> Page:
+        stmt = (
+            select(Post)
+            .options(
+                joinedload(Post.author),
+                joinedload(Post.group),
+            )
+            .where(Post.group_id == group_id)
+            .order_by(desc(Post.pub_date))
+        )
+        return await paginate(self.session, stmt, params=params)
 
     async def create(self, author_id: int, text: str, image: str | None, group_id: int | None) -> Post:
         post = Post(text=text, image=image, group_id=group_id, author_id=author_id)
         self.session.add(post)
         await self.session.commit()
-        await self.session.refresh(post)
-        return post
+        # Перезагружаем с joinedload, чтобы Pydantic смог прочитать author и group
+        stmt = (
+            select(Post)
+            .options(
+                joinedload(Post.author),
+                joinedload(Post.group),
+            )
+            .where(Post.id == post.id)
+        )
+        return await self.session.scalar(stmt)
 
     async def get_by_id(self, post_id: int) -> Post | None:
         stmt = select(Post).where(Post.id == post_id)
@@ -44,9 +73,9 @@ class PostRepository:
         stmt = (
             select(Post)
             .options(
-                joinedload(Post.author).load_only(User.id, User.username),
+                joinedload(Post.author),
                 joinedload(Post.group),
-                selectinload(Post.comments).options(joinedload(Comment.author).load_only(User.id, User.username))
+                selectinload(Post.comments).options(joinedload(Comment.author))
             )
             .where(Post.id == post_id)
         )
@@ -56,8 +85,16 @@ class PostRepository:
         for field, value in update_data.items():
             setattr(post, field, value)
         await self.session.commit()
-        await self.session.refresh(post)
-        return post
+        # Перезагружаем с joinedload
+        stmt = (
+            select(Post)
+            .options(
+                joinedload(Post.author),
+                joinedload(Post.group),
+            )
+            .where(Post.id == post.id)
+        )
+        return await self.session.scalar(stmt)
 
     async def delete(self, post: Post) -> None:
         await self.session.delete(post)

@@ -1,27 +1,31 @@
+from fastapi_pagination import Params  # <--- ДОБАВЛЕН ИМПОРТ
+
+from app.exceptions import CannotFollowSelfError, UserNotFoundError
+from app.models import User
 from app.repositories.user import UserRepository
 from app.schemas import ProfileResponse
-from app.exceptions import UserNotFoundError, CannotFollowSelfError
-from app.models import User
+
 
 class UserService:
     def __init__(self, user_repo: UserRepository):
         self.user_repo = user_repo
 
-    async def get_profile(self, target_username: str | None, current_user: User) -> ProfileResponse:
+    # ДОБАВЛЕН параметр params третьим аргументом
+    async def get_profile(self, target_username: str | None, current_user: User, params: Params) -> ProfileResponse:
         if not target_username:
             target_username = current_user.username
         author = await self.user_repo.get_by_username(target_username)
         if not author:
             raise UserNotFoundError("Пользователь не найден")
 
-        posts_page = await self.user_repo.get_posts_by_author(author.id)
+        # Передаем params в репозиторий
+        posts_page = await self.user_repo.get_posts_by_author(author.id, params)
         total_posts = await self.user_repo.count_posts_by_author(author.id)
 
         is_following = False
         if current_user and current_user.id != author.id:
             is_following = await self.user_repo.is_following(current_user.id, author.id)
 
-        # Возвращаем словарь, который Pydantic (ProfileResponse) сможет валидировать
         return {
             "author": author,
             "posts": posts_page,

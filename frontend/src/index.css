@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==================== БАЗОВЫЕ СТИЛИ ==================== */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply font-sans bg-gray-50 text-gray-900 antialiased;
+    min-height: 100vh;
+  }
+
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  button {
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  input,
+  textarea,
+  select {
+    font-family: inherit;
+  }
+}
+
+/* ==================== УТИЛИТЫ ==================== */
+@layer utilities {
+  /* Тонкие скроллбары */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #d1d5db;
+  }
+
+  /* Ограничение строк текста */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;                    /* <--- ДОБАВЛЕНО */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* ==================== КОМПОНЕНТЫ ==================== */
+/* 
+  ⚠️ Классы ниже — легаси. Они оставлены на случай, 
+  если где-то в компонентах ещё используется className="header", 
+  className="post-card" и т.д. 
+  
+  Если вы уверены, что они не нужны — можно удалить весь блок ниже.
+*/
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Loader */
+.loader {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.loader__spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #6366f1; /* brand-500 */
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Кнопки */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn--primary {
+  background: #6366f1;
+  color: white;
+}
+
+.btn--primary:hover {
+  background: #4f46e5;
+}
+
+.btn--danger {
+  background: #ef4444;
+  color: white;
+}
+
+.btn--danger:hover {
+  background: #dc2626;
+}

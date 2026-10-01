@@ -1,7 +1,11 @@
-from sqlalchemy import select, func
+from fastapi_pagination import Page, Params
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi_pagination import Page
-from app.models import User, Post, Follow
+from sqlalchemy.orm import joinedload
+
+from app.models import Follow, Post, User
+
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
@@ -11,9 +15,17 @@ class UserRepository:
         stmt = select(User).where(User.username == username)
         return await self.session.scalar(stmt)
 
-    async def get_posts_by_author(self, author_id: int) -> Page:
-        stmt = select(Post).where(Post.author_id == author_id).order_by(Post.pub_date.desc())
-        return await paginate(self.session, stmt)
+    async def get_posts_by_author(self, author_id: int, params: Params) -> Page:
+        stmt = (
+            select(Post)
+            .options(
+                joinedload(Post.author),
+                joinedload(Post.group),  # <--- ДОБАВЛЕНО: без этого профиль падает с MissingGreenlet
+            )
+            .where(Post.author_id == author_id)
+            .order_by(Post.pub_date.desc())
+        )
+        return await paginate(self.session, stmt, params=params)
 
     async def count_posts_by_author(self, author_id: int) -> int:
         stmt = select(func.count(Post.id)).where(Post.author_id == author_id)
